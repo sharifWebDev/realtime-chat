@@ -4,11 +4,11 @@ let token = null;
 let currentChannel = "general";
 let currentChannelName = "General";
 let currentChannelAvatar = "🌐";
-let messageReactions = new Map();
 let selectedMessageId = null;
 let pendingFile = null;
 let emojiPicker = null;
-let allUsers = []; // Store all users for direct messages
+let allUsers = [];
+let channels = [];
 
 // DOM Elements
 const authDiv = document.getElementById("auth");
@@ -101,9 +101,7 @@ async function login() {
                 userAvatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser)}&background=random`;
             }
             
-            // Fetch all users for direct messages
             await fetchAllUsers();
-            
             requestNotificationPermission();
             showAlert("Welcome", `Hello ${currentUser}!`, "success");
         } else {
@@ -218,9 +216,13 @@ function switchChannel(channelId, channelName, channelAvatar, description) {
     
     currentChannelSpan.textContent = channelName;
     channelDescriptionSpan.textContent = description || "";
-    channelAvatarDiv.innerHTML = `
-        <img src="${channelAvatar}" class="w-10 h-10 rounded-full object-cover">
-        `;
+    
+    // Handle avatar display - if it's an emoji or URL
+    if (channelAvatar && (channelAvatar.startsWith('http') || channelAvatar.startsWith('/'))) {
+        channelAvatarDiv.innerHTML = `<img src="${channelAvatar}" class="w-10 h-10 rounded-full object-cover">`;
+    } else {
+        channelAvatarDiv.innerHTML = `<div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl">${channelAvatar || "💬"}</div>`;
+    }
     
     // Clear messages
     messagesDiv.innerHTML = "";
@@ -251,12 +253,15 @@ function closeCreateChannelModal() {
 function showChannelInfo() {
     const channel = channels.find(c => c.id === currentChannel);
     if (channel) {
+        const avatarHtml = channel.avatar && (channel.avatar.startsWith('http') || channel.avatar.startsWith('/')) 
+            ? `<img src="${channel.avatar}" class="w-20 h-20 rounded-full object-cover mx-auto">`
+            : `<div class="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl mx-auto">${channel.avatar || "💬"}</div>`;
+        
         const content = `
             <div class="text-center mb-4">
-                <div class="text-6xl mb-2"><img src="${channel.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name)}&background=random`}" class="w-8 h-8 rounded-full object-cover">
-            </div>
-                <h4 class="text-white font-bold">${channel.name}</h4>
-                <p class="text-gray-400 text-sm">${channel.description || "No description"}</p>
+                ${avatarHtml}
+                <h4 class="text-white font-bold mt-2">${escapeHtml(channel.name)}</h4>
+                <p class="text-gray-400 text-sm">${escapeHtml(channel.description) || "No description"}</p>
             </div>
             <div class="border-t border-gray-700 pt-4">
                 <p class="text-gray-400 text-sm">Type: ${channel.type}</p>
@@ -273,6 +278,155 @@ function closeChannelInfoModal() {
 }
 
 // ========== Message Handling ==========
+
+function displayMessage(messageData) {
+    if (!currentUser) {
+        console.warn('Current user not set');
+        return;
+    }
+    
+    // Use fromUser (from database) instead of from
+    const messageFrom = messageData.fromUser || messageData.from;
+    const isOwnMessage = messageFrom === currentUser;
+    
+    console.log('Displaying message:', messageData);
+    console.log('Message from:', messageFrom, 'Current user:', currentUser, 'Is own message:', isOwnMessage);
+    
+    // Create message wrapper
+    const messageWrapper = document.createElement("div");
+    messageWrapper.className = `message-wrapper ${isOwnMessage ? 'sent' : 'received'}`;
+    messageWrapper.id = `msg-${messageData.id}`;
+    messageWrapper.dataset.messageId = messageData.id;
+    
+    // Create message bubble
+    const messageBubble = document.createElement("div");
+    messageBubble.className = `message-bubble ${isOwnMessage ? 'sent' : 'received'}`;
+    
+    // Add sender info for received messages
+    if (!isOwnMessage) {
+        const senderInfo = document.createElement("div");
+        senderInfo.className = "message-sender";
+        const avatarUrl = messageData.fromAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(messageFrom)}&background=random`;
+        senderInfo.innerHTML = `
+            <img src="${avatarUrl}" alt="${escapeHtml(messageFrom)}">
+            <span>${escapeHtml(messageFrom)}</span>
+        `;
+        messageBubble.appendChild(senderInfo);
+    }
+    
+    // Message content
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "message-content";
+    
+    // Handle different message types
+    if (messageData.type === "file" && messageData.fileData) {
+        const file = messageData.fileData;
+        if (file.mimetype && file.mimetype.startsWith("image/")) {
+            contentDiv.innerHTML = `
+                <div class="file-attachment">
+                    <img src="${file.url}" class="image-preview" onclick="window.open('${file.url}', '_blank')" alt="Image">
+                    <div class="text-xs text-gray-300 mt-1">${escapeHtml(file.filename)}</div>
+                </div>
+                ${messageData.message && messageData.message !== `📎 ${file.filename}` ? `<div class="mt-2">${escapeHtml(messageData.message)}</div>` : ''}
+            `;
+        } else {
+            contentDiv.innerHTML = `
+                <div class="file-attachment">
+                    <i class="fas fa-file-alt mr-2"></i>
+                    <a href="${file.url}" target="_blank" class="text-blue-400 hover:underline">${escapeHtml(file.filename)}</a>
+                    <div class="text-xs text-gray-300">${(file.size / 1024).toFixed(1)} KB</div>
+                </div>
+                ${messageData.message && messageData.message !== `📎 ${file.filename}` ? `<div class="mt-2">${escapeHtml(messageData.message)}</div>` : ''}
+            `;
+        }
+    } else {
+        // Handle emojis and text
+        const formattedMessage = messageData.message || '';
+        contentDiv.innerHTML = `<div class="break-words">${escapeHtml(formattedMessage)}</div>`;
+    }
+    messageBubble.appendChild(contentDiv);
+    
+    // Message footer (timestamp and status)
+    const footerDiv = document.createElement("div");
+    footerDiv.className = `message-footer ${isOwnMessage ? 'sent' : 'received'}`;
+    
+    const timestamp = document.createElement("span");
+    timestamp.textContent = new Date(messageData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    footerDiv.appendChild(timestamp);
+    
+    // Add status for own messages
+    if (isOwnMessage && messageData.status) {
+        const statusSpan = document.createElement("span");
+        statusSpan.className = "message-status";
+        
+        if (messageData.status === 'seen') {
+            statusSpan.innerHTML = '<i class="fas fa-check-double status-seen"></i>';
+        } else if (messageData.status === 'delivered') {
+            statusSpan.innerHTML = '<i class="fas fa-check-double status-delivered"></i>';
+        } else {
+            statusSpan.innerHTML = '<i class="fas fa-check status-sent"></i>';
+        }
+        
+        footerDiv.appendChild(statusSpan);
+    }
+    
+    messageBubble.appendChild(footerDiv);
+    
+    // Add message actions (reaction button)
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "message-actions";
+    actionsDiv.innerHTML = `
+        <button onclick="showReactionPicker('${messageData.id}', event)" title="React">
+            <i class="far fa-smile-wink"></i>
+        </button>
+    `;
+    messageBubble.appendChild(actionsDiv);
+    
+    // Add reactions if any
+    if (messageData.reactions && Object.keys(messageData.reactions).length > 0) {
+        const reactionsDiv = document.createElement("div");
+        reactionsDiv.className = "message-reactions";
+        
+        const reactionCounts = {};
+        Object.values(messageData.reactions).forEach(reaction => {
+            reactionCounts[reaction] = (reactionCounts[reaction] || 0) + 1;
+        });
+        
+        for (const [reaction, count] of Object.entries(reactionCounts)) {
+            const isActive = messageData.reactions[currentUser] === reaction;
+            const reactionBadge = document.createElement("div");
+            reactionBadge.className = `reaction-badge ${isActive ? 'active' : ''}`;
+            reactionBadge.onclick = () => toggleReaction(messageData.id, reaction);
+            reactionBadge.innerHTML = `${reaction} ${count}`;
+            reactionsDiv.appendChild(reactionBadge);
+        }
+        
+        messageBubble.appendChild(reactionsDiv);
+    }
+    
+    messageWrapper.appendChild(messageBubble);
+    messagesDiv.appendChild(messageWrapper);
+    
+    // Scroll to bottom
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    // Mark message as seen if it's not from current user and in current channel
+    if (!isOwnMessage && messageData.channelId === currentChannel) {
+        socket.emit("mark seen", {
+            messageId: messageData.id,
+            channelId: messageData.channelId
+        });
+    }
+    
+    // Show notification for new messages
+    if (!isOwnMessage && document.hidden) {
+        showNotification(
+            `Message from ${messageFrom}`,
+            messageData.message?.substring(0, 50) || "📎 File received",
+            `msg-${messageData.id}`
+        );
+    }
+}
 
 async function sendMessage() {
     let message = messageInput.value.trim();
@@ -296,8 +450,6 @@ async function sendMessage() {
     socket.emit("send message", messageData);
     messageInput.value = "";
     messageStatusSpan.textContent = "Sending...";
-    
-    // Auto-resize textarea
     messageInput.style.height = "auto";
 }
 
@@ -333,119 +485,12 @@ async function uploadFile(file) {
     }
 }
 
-function displayMessage(messageData) {
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `message flex ${messageData.from === currentUser ? 'justify-end' : 'justify-start'}`;
-    messageDiv.id = `msg-${messageData.id}`;
-    messageDiv.dataset.messageId = messageData.id;
-    
-    const bubbleClass = messageData.from === currentUser 
-        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white' 
-        : 'bg-gray-700 text-white';
-    
-    const reactions = messageData.reactions || {};
-    const reactionCounts = {};
-    Object.values(reactions).forEach(reaction => {
-        reactionCounts[reaction] = (reactionCounts[reaction] || 0) + 1;
-    });
-    
-    let reactionHtml = "";
-    if (Object.keys(reactionCounts).length > 0) {
-        reactionHtml = `<div class="flex flex-wrap gap-1 mt-2">`;
-        for (const [reaction, count] of Object.entries(reactionCounts)) {
-            const isActive = reactions[currentUser] === reaction;
-            reactionHtml += `
-                <div class="reaction-badge ${isActive ? 'active' : ''}" onclick="toggleReaction('${messageData.id}', '${reaction}')">
-                    ${reaction} ${count}
-                </div>
-            `;
-        }
-        reactionHtml += `</div>`;
-    }
-    
-    let contentHtml = "";
-    if (messageData.type === "file" && messageData.fileData) {
-        const file = messageData.fileData;
-        if (file.mimetype.startsWith("image/")) {
-            contentHtml = `
-                <div class="file-attachment">
-                    <img src="${file.url}" class="image-preview max-w-full cursor-pointer rounded-lg" onclick="window.open('${file.url}', '_blank')">
-                    <div class="text-xs text-gray-300 mt-1">${escapeHtml(file.filename)}</div>
-                </div>
-                ${messageData.message && messageData.message !== `📎 ${file.filename}` ? `<div class="mt-2">${escapeHtml(messageData.message)}</div>` : ''}
-            `;
-        } else {
-            contentHtml = `
-                <div class="file-attachment">
-                    <i class="fas fa-file-alt mr-2"></i>
-                    <a href="${file.url}" target="_blank" class="text-blue-400 hover:underline">${escapeHtml(file.filename)}</a>
-                    <div class="text-xs text-gray-300">${(file.size / 1024).toFixed(1)} KB</div>
-                </div>
-                ${messageData.message && messageData.message !== `📎 ${file.filename}` ? `<div class="mt-2">${escapeHtml(messageData.message)}</div>` : ''}
-            `;
-        }
-    } else {
-        contentHtml = `<div class="break-words">${escapeHtml(messageData.message)}</div>`;
-    }
-    
-    messageDiv.innerHTML = `
-        <div class="max-w-xs md:max-w-md ${bubbleClass} rounded-2xl p-3 shadow-md relative group">
-            ${messageData.from !== currentUser ? `
-                <div class="flex items-center space-x-2 mb-1">
-                    <img src="${messageData.fromAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(messageData.from)}&background=random`}" class="w-5 h-5 rounded-full object-cover">
-                    <div class="font-bold text-xs text-blue-300">${escapeHtml(messageData.from)}</div>
-                </div>
-            ` : ''}
-            ${contentHtml}
-            <div class="text-xs opacity-75 mt-1 flex justify-between items-center">
-                <span>${new Date(messageData.timestamp).toLocaleTimeString()}</span>
-                <div class="flex items-center space-x-1">
-                    <div class="message-actions opacity-0 group-hover:opacity-100 transition flex space-x-1">
-                        <button onclick="showReactionPicker('${messageData.id}', event)" class="hover:text-blue-300">
-                            <i class="far fa-smile-wink text-xs"></i>
-                        </button>
-                    </div>
-                    ${messageData.from === currentUser ? 
-                        `<span class="message-status"><i class="fas ${messageData.status === 'seen' ? 'fa-check-double status-seen' : messageData.status === 'delivered' ? 'fa-check-double status-delivered' : 'fa-check status-sent'}"></i></span>` : 
-                        ''
-                    }
-                </div>
-            </div>
-            ${reactionHtml}
-        </div>
-    `;
-    
-    messagesDiv.appendChild(messageDiv);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    
-    // Mark as seen
-    if (messageData.from !== currentUser && messageData.channelId === currentChannel) {
-        socket.emit("mark seen", {
-            messageId: messageData.id,
-            channelId: messageData.channelId
-        });
-    }
-    
-    // Show notification
-    if (messageData.from !== currentUser && document.hidden) {
-        showNotification(
-            `Message from ${messageData.from}`,
-            messageData.message?.substring(0, 50) || "📎 File received",
-            `msg-${messageData.id}`
-        );
-    }
-}
-
 function toggleReaction(messageId, reaction) {
-    const messageDiv = document.getElementById(`msg-${messageId}`);
-    const reactionBadge = Array.from(messageDiv?.querySelectorAll('.reaction-badge') || []).find(el => el.textContent.includes(reaction));
-    const isActive = reactionBadge?.classList.contains('active');
-    
     socket.emit("react to message", {
         messageId: messageId,
         channelId: currentChannel,
         reaction: reaction,
-        remove: isActive
+        remove: false
     });
 }
 
@@ -465,7 +510,6 @@ function showReactionPicker(messageId, event) {
     picker.style.top = `${rect.top - 50}px`;
     picker.style.left = `${rect.left}px`;
     
-    // Hide after 3 seconds
     setTimeout(() => hideReactionPicker(), 3000);
 }
 
@@ -485,10 +529,12 @@ function updateChannelList(channels) {
         channelDiv.dataset.channelId = channel.id;
         channelDiv.onclick = () => switchChannel(channel.id, channel.name, channel.avatar, channel.description);
         
+        const avatarHtml = channel.avatar && (channel.avatar.startsWith('http') || channel.avatar.startsWith('/'))
+            ? `<img src="${channel.avatar}" class="w-8 h-8 rounded-full object-cover">`
+            : `<div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg">${channel.avatar || "💬"}</div>`;
+        
         channelDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg">
-                <img src="${channel.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name)}&background=random`}" class="w-8 h-8 rounded-full object-cover">
-            </div>
+            ${avatarHtml}
             <div class="flex-1">
                 <div class="text-white font-medium">${escapeHtml(channel.name)}</div>
                 <div class="text-xs text-gray-400">${channel.memberCount || 0} members</div>
@@ -501,13 +547,12 @@ function updateChannelList(channels) {
 }
 
 function updateDirectMessagesList(users) {
-    const directMessagesDiv = document.getElementById("onlineUsers");
-    if (!directMessagesDiv) return;
+    if (!onlineUsersDiv) return;
     
-    directMessagesDiv.innerHTML = '';
+    onlineUsersDiv.innerHTML = '';
     
     if (users.length === 0) {
-        directMessagesDiv.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">No other users found</div>';
+        onlineUsersDiv.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">No other users found</div>';
         return;
     }
     
@@ -528,28 +573,12 @@ function updateDirectMessagesList(users) {
                 ${user.isOnline ? '<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>' : ''}
             `;
             
-            directMessagesDiv.appendChild(userDiv);
+            onlineUsersDiv.appendChild(userDiv);
         }
     });
 }
 
 function toggleEmojiPicker() {
-    if (!emojiPicker) {
-        // Simple emoji picker fallback
-        const emojis = ["😀", "😂", "😍", "🥰", "😎", "👍", "❤️", "🔥", "🎉", "😢", "😮", "😡"];
-        const pickerDiv = document.getElementById("emojiPicker");
-        pickerDiv.innerHTML = `
-            <div class="bg-gray-800 rounded-lg shadow-xl p-2 grid grid-cols-6 gap-1">
-                ${emojis.map(emoji => `
-                    <button onclick="insertEmoji('${emoji}')" class="text-2xl p-1 hover:bg-gray-700 rounded transition">
-                        ${emoji}
-                    </button>
-                `).join('')}
-            </div>
-        `;
-        emojiPicker = true;
-    }
-    
     const picker = document.getElementById("emojiPicker");
     picker.classList.toggle("hidden");
 }
@@ -625,8 +654,6 @@ function showAlert(title, message, type = "info") {
 
 // ========== Socket Events ==========
 
-let channels = [];
-
 socket.on("connect", () => {
     console.log("Socket connected");
 });
@@ -650,25 +677,31 @@ socket.on("all users", (users) => {
 socket.on("channels list", (channelList) => {
     channels = channelList;
     updateChannelList(channels);
-    if (channels.length > 0 && !currentChannel) {
+    if (channels.length > 0 && currentChannel === "general") {
         const firstChannel = channels[0];
-        switchChannel(firstChannel.id, firstChannel.name, firstChannel.avatar, firstChannel.description);
+        if (firstChannel) {
+            switchChannel(firstChannel.id, firstChannel.name, firstChannel.avatar, firstChannel.description);
+        }
     }
 });
 
 socket.on("new message", (messageData) => {
-    displayMessage(messageData);
+    if (messageData.channelId === currentChannel) {
+        displayMessage(messageData);
+    }
 });
 
 socket.on("message history", ({ channelId, messages }) => {
     if (channelId === currentChannel) {
         messagesDiv.innerHTML = "";
         messages.forEach(msg => displayMessage(msg));
+        setTimeout(() => {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }, 100);
     }
 });
 
 socket.on("user list", (users) => {
-    // Update online status in direct messages list
     if (allUsers.length > 0) {
         const updatedUsers = allUsers.map(user => {
             const onlineUser = users.find(u => u.username === user.username);
@@ -691,8 +724,7 @@ socket.on("user typing", ({ channelId, from, isTyping }) => {
 });
 
 socket.on("message status", ({ messageId, status }) => {
-    const messageElement = document.getElementById(`msg-${messageId}`);
-    if (messageElement && status === "delivered") {
+    if (status === "delivered") {
         messageStatusSpan.textContent = "Delivered";
         setTimeout(() => {
             messageStatusSpan.textContent = "";
@@ -713,7 +745,6 @@ socket.on("message seen", ({ messageId, seenBy }) => {
 socket.on("message reaction", ({ messageId, reactions }) => {
     const messageElement = document.getElementById(`msg-${messageId}`);
     if (messageElement) {
-        // Update reactions display
         const reactionCounts = {};
         Object.values(reactions).forEach(reaction => {
             reactionCounts[reaction] = (reactionCounts[reaction] || 0) + 1;
@@ -733,26 +764,25 @@ socket.on("message reaction", ({ messageId, reactions }) => {
             reactionHtml += `</div>`;
         }
         
-        const existingReactions = messageElement.querySelector('.reaction-badge');
+        const existingReactions = messageElement.querySelector('.message-reactions');
         if (existingReactions) {
-            const container = existingReactions.parentElement;
-            if (container) container.innerHTML = reactionHtml;
+            existingReactions.innerHTML = reactionHtml;
         } else {
-            const bubble = messageElement.querySelector('.max-w-xs');
+            const bubble = messageElement.querySelector('.message-bubble');
             if (bubble) bubble.insertAdjacentHTML('beforeend', reactionHtml);
         }
     }
 });
 
 socket.on("private chat created", ({ channelId, channelName, members }) => {
-    switchChannel(channelId, channelName, "👤", `Private chat with ${members.filter(m => m !== currentUser).join(", ")}`);
-    showAlert("Private Chat", `Started private chat with ${members.filter(m => m !== currentUser).join(", ")}`, "success");
+    const otherUser = members.filter(m => m !== currentUser).join(", ");
+    switchChannel(channelId, channelName, "👤", `Private chat with ${otherUser}`);
+    showAlert("Private Chat", `Started private chat with ${otherUser}`, "success");
 });
 
 socket.on("new private chat", ({ channelId, channelName, from, avatar }) => {
     showAlert("New Private Chat", `${from} wants to chat with you!`, "info");
     
-    // Add to channels list
     const newChannel = {
         id: channelId,
         name: from,
@@ -770,25 +800,26 @@ socket.on("new private chat", ({ channelId, channelName, from, avatar }) => {
 
 // Typing indicator
 let typingTimeout;
-messageInput.addEventListener("input", () => {
-    if (typingTimeout) clearTimeout(typingTimeout);
-    
-    socket.emit("typing", {
-        channelId: currentChannel,
-        isTyping: true
-    });
-    
-    typingTimeout = setTimeout(() => {
+if (messageInput) {
+    messageInput.addEventListener("input", () => {
+        if (typingTimeout) clearTimeout(typingTimeout);
+        
         socket.emit("typing", {
             channelId: currentChannel,
-            isTyping: false
+            isTyping: true
         });
-    }, 1000);
-    
-    // Auto-resize textarea
-    messageInput.style.height = "auto";
-    messageInput.style.height = `${messageInput.scrollHeight}px`;
-});
+        
+        typingTimeout = setTimeout(() => {
+            socket.emit("typing", {
+                channelId: currentChannel,
+                isTyping: false
+            });
+        }, 1000);
+        
+        messageInput.style.height = "auto";
+        messageInput.style.height = `${messageInput.scrollHeight}px`;
+    });
+}
 
 // Auto-login check
 const savedToken = localStorage.getItem("chatToken");
@@ -804,6 +835,7 @@ if (savedToken && savedUser) {
     currentUserSpan.textContent = currentUser;
     requestNotificationPermission();
     fetchAllUsers();
+    userAvatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser)}&background=random`;
 }
 
 // Click outside to close reaction picker
