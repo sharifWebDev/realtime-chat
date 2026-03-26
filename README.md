@@ -800,6 +800,36 @@ du -h data/chat.db
 sqlite3 data/chat.db "SELECT name, (page_count * page_size) / 1024 / 1024 as size_mb FROM dbstat WHERE name='messages';"
 ```
 
+
+---
+## 📸 Screenshots
+
+### Login Screen
+![alt text](image.png)
+
+### Register Screen
+![alt text](image-1.png)
+
+### Private Chat Interface
+![alt text](image-3.png)
+
+### Typing effect
+![alt text](image-4.png)
+
+### File Sharing
+![alt text](image-5.png)
+
+### chat Notifications
+![alt text](image-2.png)
+
+### Group Create
+![alt text](image-6.png)
+
+### Group Message
+
+---
+
+
 ---
 
 ## 🤝 Contributing
