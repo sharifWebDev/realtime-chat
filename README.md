@@ -826,6 +826,7 @@ sqlite3 data/chat.db "SELECT name, (page_count * page_size) / 1024 / 1024 as siz
 ![alt text](image-6.png)
 
 ### Group Message
+![alt text](image-7.png)
 
 ---
 
