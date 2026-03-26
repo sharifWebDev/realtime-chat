@@ -218,7 +218,9 @@ function switchChannel(channelId, channelName, channelAvatar, description) {
     
     currentChannelSpan.textContent = channelName;
     channelDescriptionSpan.textContent = description || "";
-    channelAvatarDiv.innerHTML = channelAvatar;
+    channelAvatarDiv.innerHTML = `
+        <img src="${channelAvatar}" class="w-10 h-10 rounded-full object-cover">
+        `;
     
     // Clear messages
     messagesDiv.innerHTML = "";
@@ -251,7 +253,8 @@ function showChannelInfo() {
     if (channel) {
         const content = `
             <div class="text-center mb-4">
-                <div class="text-6xl mb-2">${channel.avatar}</div>
+                <div class="text-6xl mb-2"><img src="${channel.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name)}&background=random`}" class="w-8 h-8 rounded-full object-cover">
+            </div>
                 <h4 class="text-white font-bold">${channel.name}</h4>
                 <p class="text-gray-400 text-sm">${channel.description || "No description"}</p>
             </div>
