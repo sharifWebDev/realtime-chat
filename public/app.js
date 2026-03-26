@@ -484,7 +484,7 @@ function updateChannelList(channels) {
         
         channelDiv.innerHTML = `
             <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg">
-                ${channel.avatar || "💬"}
+                <img src="${channel.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name)}&background=random`}" class="w-8 h-8 rounded-full object-cover">
             </div>
             <div class="flex-1">
                 <div class="text-white font-medium">${escapeHtml(channel.name)}</div>

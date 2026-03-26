@@ -436,7 +436,7 @@ io.on("connection", (socket) => {
         message: message,
         type: type,
         fileData: fileData,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         status: "sent",
         reactions: {}
       };
@@ -520,7 +520,7 @@ io.on("connection", (socket) => {
             messageId,
             channelId,
             seenBy: currentUser,
-            timestamp: new Date()
+            timestamp: new Date().toISOString()
           });
         }
       }
@@ -628,7 +628,9 @@ async function broadcastUserList() {
 setInterval(async () => {
   try {
     const deleted = await db.cleanupOldMessages(30);
-    console.log(`🧹 Cleaned up ${deleted} old messages`);
+    if (deleted > 0) {
+      console.log(`🧹 Cleaned up ${deleted} old messages`);
+    }
   } catch (error) {
     console.error("Error cleaning up messages:", error);
   }
@@ -640,22 +642,67 @@ app.get("/api/stats", authenticateToken, async (req, res) => {
     const stats = await db.getDatabaseStats();
     res.json(stats);
   } catch (error) {
+    console.error("Error getting stats:", error);
     res.status(500).json({ error: "Failed to get stats" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Database: ${db.dbPath}`);
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    database: db.dbPath
+  });
 });
+
+// Start server with database initialization
+async function startServer() {
+  try {
+    // Initialize database
+    await db.init();
+    console.log('✅ Database initialized successfully');
+    console.log(`📁 Database location: ${db.dbPath}`);
+    
+    // Start server
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+      console.log(`🔐 JWT Secret: ${JWT_SECRET ? '✓ Set' : '✗ Not set (using default)'}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down gracefully...');
-  db.close();
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
+  try {
+    await db.close();
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
 });
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Start the server
+startServer();
