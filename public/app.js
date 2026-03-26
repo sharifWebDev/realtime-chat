@@ -6,7 +6,6 @@ let currentChannelName = "General";
 let currentChannelAvatar = "🌐";
 let selectedMessageId = null;
 let pendingFile = null;
-let emojiPicker = null;
 let allUsers = [];
 let channels = [];
 
@@ -24,6 +23,30 @@ const channelAvatarDiv = document.getElementById("channelAvatar");
 const typingIndicatorDiv = document.getElementById("typingIndicator");
 const messageStatusSpan = document.getElementById("messageStatus");
 const userAvatarImg = document.getElementById("userAvatar");
+
+// ========== Emoji Data ==========
+const emojiList = [
+    "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
+    "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚",
+    "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩",
+    "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣",
+    "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬",
+    "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗",
+    "🤔", "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯",
+    "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐",
+    "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈",
+    "👿", "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾",
+    "🤖", "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿",
+    "😾", "🙈", "🙉", "🙊", "💋", "💌", "💘", "💝", "💖", "💗",
+    "💓", "💞", "💕", "💟", "❣️", "💔", "❤️", "🧡", "💛", "💚",
+    "💙", "💜", "🤎", "🖤", "🤍", "💯", "💢", "💥", "💫", "💦",
+    "💨", "🕳️", "💣", "💬", "🗯️", "💭", "💤", "👋", "🤚", "🖐️",
+    "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙",
+    "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "👊", "✊",
+    "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅",
+    "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🧠",
+    "🦷", "🦴", "👀", "👁️", "👅", "👄", "🫦", "❤️", "🔥", "🎉"
+];
 
 // ========== Authentication ==========
 
@@ -285,12 +308,8 @@ function displayMessage(messageData) {
         return;
     }
     
-    // Use fromUser (from database) instead of from
     const messageFrom = messageData.fromUser || messageData.from;
     const isOwnMessage = messageFrom === currentUser;
-    
-    console.log('Displaying message:', messageData);
-    console.log('Message from:', messageFrom, 'Current user:', currentUser, 'Is own message:', isOwnMessage);
     
     // Create message wrapper
     const messageWrapper = document.createElement("div");
@@ -318,7 +337,6 @@ function displayMessage(messageData) {
     const contentDiv = document.createElement("div");
     contentDiv.className = "message-content";
     
-    // Handle different message types
     if (messageData.type === "file" && messageData.fileData) {
         const file = messageData.fileData;
         if (file.mimetype && file.mimetype.startsWith("image/")) {
@@ -340,13 +358,11 @@ function displayMessage(messageData) {
             `;
         }
     } else {
-        // Handle emojis and text
-        const formattedMessage = messageData.message || '';
-        contentDiv.innerHTML = `<div class="break-words">${escapeHtml(formattedMessage)}</div>`;
+        contentDiv.innerHTML = `<div class="break-words">${escapeHtml(messageData.message || '')}</div>`;
     }
     messageBubble.appendChild(contentDiv);
     
-    // Message footer (timestamp and status)
+    // Message footer
     const footerDiv = document.createElement("div");
     footerDiv.className = `message-footer ${isOwnMessage ? 'sent' : 'received'}`;
     
@@ -354,7 +370,6 @@ function displayMessage(messageData) {
     timestamp.textContent = new Date(messageData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     footerDiv.appendChild(timestamp);
     
-    // Add status for own messages
     if (isOwnMessage && messageData.status) {
         const statusSpan = document.createElement("span");
         statusSpan.className = "message-status";
@@ -372,7 +387,7 @@ function displayMessage(messageData) {
     
     messageBubble.appendChild(footerDiv);
     
-    // Add message actions (reaction button)
+    // Add message actions
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "message-actions";
     actionsDiv.innerHTML = `
@@ -382,7 +397,7 @@ function displayMessage(messageData) {
     `;
     messageBubble.appendChild(actionsDiv);
     
-    // Add reactions if any
+    // Add reactions
     if (messageData.reactions && Object.keys(messageData.reactions).length > 0) {
         const reactionsDiv = document.createElement("div");
         reactionsDiv.className = "message-reactions";
@@ -406,11 +421,9 @@ function displayMessage(messageData) {
     
     messageWrapper.appendChild(messageBubble);
     messagesDiv.appendChild(messageWrapper);
-    
-    // Scroll to bottom
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     
-    // Mark message as seen if it's not from current user and in current channel
+    // Mark as seen
     if (!isOwnMessage && messageData.channelId === currentChannel) {
         socket.emit("mark seen", {
             messageId: messageData.id,
@@ -418,7 +431,7 @@ function displayMessage(messageData) {
         });
     }
     
-    // Show notification for new messages
+    // Show notification
     if (!isOwnMessage && document.hidden) {
         showNotification(
             `Message from ${messageFrom}`,
@@ -501,21 +514,154 @@ function addReaction(reaction) {
     }
 }
 
+// ========== Emoji Picker Functions ==========
+
+function createEmojiPicker() {
+    const pickerDiv = document.getElementById("emojiPicker");
+    if (!pickerDiv) return;
+    
+    const emojiCategories = {
+        "😊 Smileys": emojiList.slice(0, 50),
+        "❤️ Hearts": emojiList.slice(50, 70),
+        "👍 Gestures": emojiList.slice(70, 100),
+        "🎉 Celebrations": emojiList.slice(100, 120),
+        "🐱 Animals": emojiList.slice(120, 140),
+        "⭐ Symbols": emojiList.slice(140, 160)
+    };
+    
+    let html = `
+        <div class="emoji-picker-container bg-gray-800 rounded-lg shadow-2xl border border-gray-700 w-80">
+            <div class="p-2 border-b border-gray-700">
+                <input type="text" id="emojiSearch" placeholder="Search emojis..." 
+                       class="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            </div>
+            <div class="emoji-list max-h-80 overflow-y-auto p-2">
+    `;
+    
+    for (const [category, emojis] of Object.entries(emojiCategories)) {
+        html += `
+            <div class="mb-3">
+                <div class="text-xs text-gray-400 font-semibold mb-2">${category}</div>
+                <div class="grid grid-cols-8 gap-1">
+        `;
+        
+        emojis.forEach(emoji => {
+            html += `
+                <button onclick="insertEmoji('${emoji}')" 
+                        class="text-2xl p-1 hover:bg-gray-700 rounded transition transform hover:scale-110"
+                        title="${emoji}">
+                    ${emoji}
+                </button>
+            `;
+        });
+        
+        html += `</div></div>`;
+    }
+    
+    html += `
+            </div>
+            <div class="p-2 border-t border-gray-700 flex justify-between text-xs text-gray-500">
+                <span>Click emoji to insert</span>
+                <button onclick="closeEmojiPicker()" class="hover:text-white">Close</button>
+            </div>
+        </div>
+    `;
+    
+    pickerDiv.innerHTML = html;
+    
+    // Add search functionality
+    setTimeout(() => {
+        const searchInput = document.getElementById("emojiSearch");
+        if (searchInput) {
+            searchInput.addEventListener("input", (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const allEmojis = document.querySelectorAll('.emoji-list button');
+                allEmojis.forEach(btn => {
+                    const emoji = btn.textContent;
+                    const shouldShow = !searchTerm || emoji.includes(searchTerm);
+                    btn.style.display = shouldShow ? 'inline-block' : 'none';
+                });
+            });
+        }
+    }, 100);
+}
+
+function toggleEmojiPicker() {
+    const picker = document.getElementById("emojiPicker");
+    if (!picker) return;
+    
+    if (picker.innerHTML === '') {
+        createEmojiPicker();
+    }
+    
+    picker.classList.toggle("hidden");
+}
+
+function insertEmoji(emoji) {
+    if (!messageInput) return;
+    
+    const cursorPos = messageInput.selectionStart;
+    const currentValue = messageInput.value;
+    const newValue = currentValue.slice(0, cursorPos) + emoji + currentValue.slice(cursorPos);
+    
+    messageInput.value = newValue;
+    messageInput.focus();
+    
+    const newCursorPos = cursorPos + emoji.length;
+    messageInput.setSelectionRange(newCursorPos, newCursorPos);
+    
+    closeEmojiPicker();
+    messageInput.dispatchEvent(new Event('input'));
+}
+
+function closeEmojiPicker() {
+    const picker = document.getElementById("emojiPicker");
+    if (picker) {
+        picker.classList.add("hidden");
+    }
+}
+
+// ========== Reaction Picker Functions ==========
+
 function showReactionPicker(messageId, event) {
     selectedMessageId = messageId;
     const picker = document.getElementById("reactionPicker");
     const rect = event.target.getBoundingClientRect();
     
     picker.style.display = "flex";
+    picker.style.position = "fixed";
     picker.style.top = `${rect.top - 50}px`;
     picker.style.left = `${rect.left}px`;
+    picker.style.zIndex = "1000";
     
-    setTimeout(() => hideReactionPicker(), 3000);
+    if (window.reactionTimeout) clearTimeout(window.reactionTimeout);
+    window.reactionTimeout = setTimeout(() => hideReactionPicker(), 5000);
 }
 
 function hideReactionPicker() {
-    document.getElementById("reactionPicker").style.display = "none";
+    const picker = document.getElementById("reactionPicker");
+    if (picker) {
+        picker.style.display = "none";
+    }
     selectedMessageId = null;
+}
+
+function updateReactionPicker() {
+    const picker = document.getElementById("reactionPicker");
+    if (picker) {
+        picker.innerHTML = `
+            <div class="flex space-x-2 p-2 bg-gray-800 rounded-full shadow-xl">
+                <button onclick="addReaction('❤️')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">❤️</button>
+                <button onclick="addReaction('👍')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">👍</button>
+                <button onclick="addReaction('😂')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">😂</button>
+                <button onclick="addReaction('😮')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">😮</button>
+                <button onclick="addReaction('😢')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">😢</button>
+                <button onclick="addReaction('🎉')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">🎉</button>
+                <button onclick="addReaction('🔥')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">🔥</button>
+                <button onclick="addReaction('💯')" class="text-2xl hover:scale-125 transition p-2 hover:bg-gray-700 rounded-full">💯</button>
+            </div>
+        `;
+    }
 }
 
 // ========== UI Updates ==========
@@ -576,17 +722,6 @@ function updateDirectMessagesList(users) {
             onlineUsersDiv.appendChild(userDiv);
         }
     });
-}
-
-function toggleEmojiPicker() {
-    const picker = document.getElementById("emojiPicker");
-    picker.classList.toggle("hidden");
-}
-
-function insertEmoji(emoji) {
-    messageInput.value += emoji;
-    messageInput.focus();
-    document.getElementById("emojiPicker").classList.add("hidden");
 }
 
 function escapeHtml(text) {
@@ -798,7 +933,8 @@ socket.on("new private chat", ({ channelId, channelName, from, avatar }) => {
     updateChannelList(channels);
 });
 
-// Typing indicator
+// ========== Typing Indicator ==========
+
 let typingTimeout;
 if (messageInput) {
     messageInput.addEventListener("input", () => {
@@ -821,7 +957,8 @@ if (messageInput) {
     });
 }
 
-// Auto-login check
+// ========== Auto-login ==========
+
 const savedToken = localStorage.getItem("chatToken");
 const savedUser = localStorage.getItem("chatUser");
 if (savedToken && savedUser) {
@@ -838,13 +975,28 @@ if (savedToken && savedUser) {
     userAvatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser)}&background=random`;
 }
 
-// Click outside to close reaction picker
-document.addEventListener("click", (e) => {
-    if (!e.target.closest("#reactionPicker")) {
-        hideReactionPicker();
+// ========== Initialize Emoji and Reaction Pickers ==========
+
+document.addEventListener("DOMContentLoaded", () => {
+    const emojiPickerDiv = document.getElementById("emojiPicker");
+    if (emojiPickerDiv && emojiPickerDiv.innerHTML === '') {
+        createEmojiPicker();
     }
-    if (!e.target.closest("#emojiPicker") && !e.target.closest("[onclick='toggleEmojiPicker()']")) {
-        const picker = document.getElementById("emojiPicker");
-        if (picker) picker.classList.add("hidden");
-    }
+    
+    updateReactionPicker();
+    
+    document.addEventListener("click", (e) => {
+        const emojiPicker = document.getElementById("emojiPicker");
+        const reactionPicker = document.getElementById("reactionPicker");
+        const emojiButton = e.target.closest("[onclick='toggleEmojiPicker()']");
+        const reactionButton = e.target.closest("[onclick*='showReactionPicker']");
+        
+        if (emojiPicker && !emojiPicker.contains(e.target) && !emojiButton) {
+            emojiPicker.classList.add("hidden");
+        }
+        
+        if (reactionPicker && !reactionPicker.contains(e.target) && !reactionButton) {
+            hideReactionPicker();
+        }
+    });
 });
