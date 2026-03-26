@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureChat - Professional Messenger</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/emoji-mart@5.5.2/css/emoji-mart.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800">
+
+<div id="app">
+    <!-- Auth Modal -->
+    <div id="auth" class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm"></div>
+        <div class="relative bg-gray-800 rounded-2xl shadow-2xl p-8 w-96 border border-gray-700 transform transition-all">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-lock text-4xl text-white"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-white">SecureChat</h2>
+                <p class="text-gray-400 text-sm mt-2">End-to-End Encrypted Messenger</p>
+            </div>
+            
+            <div id="loginForm">
+                <div class="mb-4">
+                    <input type="text" id="loginUsername" placeholder="Username" 
+                           class="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <input type="password" id="loginPassword" placeholder="Password" 
+                           class="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button onclick="login()" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition transform hover:scale-105">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login
+                </button>
+                <p class="mt-4 text-center text-gray-400">
+                    New user? 
+                    <button onclick="showRegister()" class="text-blue-500 hover:underline">Create account</button>
+                </p>
+            </div>
+            
+            <div id="registerForm" style="display:none;">
+                <div class="mb-4">
+                    <input type="text" id="regUsername" placeholder="Username" 
+                           class="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <input type="password" id="regPassword" placeholder="Password (min 6 chars)" 
+                           class="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" id="regAvatar" placeholder="Avatar URL (optional)" 
+                               class="flex-1 px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <button onclick="register()" 
+                        class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition transform hover:scale-105">
+                    <i class="fas fa-user-plus mr-2"></i>Register
+                </button>
+                <p class="mt-4 text-center text-gray-400">
+                    Back to 
+                    <button onclick="showLogin()" class="text-blue-500 hover:underline">Login</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div id="chat" style="display:none;" class="flex h-screen">
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col transition-all duration-300">
+            <div class="p-4 bg-gradient-to-r from-blue-600 to-purple-600">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-comments text-2xl text-white"></i>
+                        <h3 class="font-bold text-white text-xl">SecureChat</h3>
+                    </div>
+                    <button onclick="logout()" class="text-white hover:bg-white hover:bg-opacity-20 px-3 py-1 rounded-lg transition">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- User Profile -->
+            <div class="p-4 border-b border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <img id="userAvatar" class="w-10 h-10 rounded-full object-cover" alt="Avatar">
+                    <div>
+                        <div class="text-white font-semibold" id="currentUser"></div>
+                        <div class="text-xs text-green-400"><i class="fas fa-circle text-xs mr-1"></i>Online</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Channel List -->
+            <div class="flex-1 overflow-y-auto">
+                <div class="p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-gray-400 text-sm font-semibold uppercase tracking-wider">
+                            <i class="fas fa-hashtag mr-2"></i>Channels
+                        </h4>
+                        <button onclick="showCreateChannelModal()" class="text-blue-500 hover:text-blue-400 transition">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="channelList" class="space-y-1"></div>
+                </div>
+                
+                <!-- In the sidebar, replace the Direct Messages section -->
+                <div class="border-t border-gray-700 p-4">
+                    <h4 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-3">
+                        <i class="fas fa-user-friends mr-2"></i>Direct Messages
+                    </h4>
+                    <div id="onlineUsers" class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Users will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col bg-gray-900">
+            <!-- Chat Header -->
+            <div id="chatHeader" class="bg-gray-800 border-b border-gray-700 p-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-white">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <div id="channelAvatar" class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                            🌐
+                        </div>
+                        <div>
+                            <div class="font-semibold text-white text-lg" id="currentChannel">General</div>
+                            <div id="channelDescription" class="text-xs text-gray-400"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div id="encryptionBadge" class="text-xs bg-green-600 text-white px-2 py-1 rounded-full">
+                            <i class="fas fa-lock mr-1"></i>Encrypted
+                        </div>
+                        <button onclick="showChannelInfo()" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="typingIndicator" class="text-xs text-gray-500 mt-1"></div>
+            </div>
+            
+            <!-- Messages Area -->
+            <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+            
+            <!-- Input Area -->
+            <div class="bg-gray-800 border-t border-gray-700 p-4">
+                <div class="flex items-end space-x-2">
+                    <div class="flex space-x-1">
+                        <button onclick="toggleEmojiPicker()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-700 transition">
+                            <i class="far fa-smile-wink text-xl"></i>
+                        </button>
+                        <button onclick="document.getElementById('fileInput').click()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-700 transition">
+                            <i class="fas fa-paperclip text-xl"></i>
+                        </button>
+                        <input type="file" id="fileInput" style="display:none" onchange="uploadFile(this.files[0])">
+                    </div>
+                    <div class="flex-1 relative">
+                        <textarea id="messageInput" rows="1" placeholder="Type a message..." 
+                               class="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                        <div id="emojiPicker" class="absolute bottom-full mb-2 hidden"></div>
+                    </div>
+                    <button onclick="sendMessage()" 
+                            class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div id="messageStatus" class="text-xs text-gray-500 mt-2 text-right"></div>
+                <div id="uploadProgress" class="text-xs text-gray-500 mt-1 hidden">
+                    <i class="fas fa-spinner fa-spin mr-1"></i>Uploading...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Channel Modal -->
+<div id="createChannelModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded-2xl p-6 w-96">
+        <h3 class="text-xl font-bold text-white mb-4">Create Channel</h3>
+        <div class="mb-4">
+            <input type="text" id="channelName" placeholder="Channel name" 
+                   class="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg">
+        </div>
+        <div class="mb-4">
+            <textarea id="channelDesc" placeholder="Description (optional)" rows="2"
+                      class="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg"></textarea>
+        </div>
+        <div class="mb-4">
+            <input type="text" id="channelAvatar" placeholder="Avatar emoji (e.g., 💬)" maxlength="2"
+                   class="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg">
+        </div>
+        <div class="flex space-x-2">
+            <button onclick="createChannel()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
+                Create
+            </button>
+            <button onclick="closeCreateChannelModal()" class="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Channel Info Modal -->
+<div id="channelInfoModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded-2xl p-6 w-96">
+        <h3 class="text-xl font-bold text-white mb-4">Channel Info</h3>
+        <div id="channelInfoContent"></div>
+        <button onclick="closeChannelInfoModal()" class="w-full mt-4 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700">
+            Close
+        </button>
+    </div>
+</div>
+
+<!-- Reaction Picker -->
+<div id="reactionPicker" class="fixed hidden bg-gray-800 rounded-lg shadow-xl p-2 z-50">
+    <div class="flex space-x-2">
+        <button onclick="addReaction('❤️')" class="text-2xl hover:scale-125 transition">❤️</button>
+        <button onclick="addReaction('👍')" class="text-2xl hover:scale-125 transition">👍</button>
+        <button onclick="addReaction('😂')" class="text-2xl hover:scale-125 transition">😂</button>
+        <button onclick="addReaction('😮')" class="text-2xl hover:scale-125 transition">😮</button>
+        <button onclick="addReaction('😢')" class="text-2xl hover:scale-125 transition">😢</button>
+        <button onclick="addReaction('🎉')" class="text-2xl hover:scale-125 transition">🎉</button>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/emoji-mart@5.5.2/dist/index.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

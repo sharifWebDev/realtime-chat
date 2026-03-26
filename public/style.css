@@ -1,0 +1,258 @@
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Message animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Message hover effects */
+.message:hover .message-actions {
+    opacity: 1;
+}
+
+.message-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+/* Typing indicator */
+.typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.typing-dots {
+    display: inline-flex;
+    gap: 3px;
+    margin-left: 5px;
+}
+
+.typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #9ca3af;
+    animation: typingBounce 1.4s infinite;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Online status */
+.online-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #10b981;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+/* Channel and user items */
+.channel-item, .user-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.channel-item:hover, .user-item:hover {
+    background-color: #374151;
+    transform: translateX(5px);
+}
+
+.active-channel {
+    background: linear-gradient(135deg, #1e3a8a, #1e40af);
+    border-left: 3px solid #3b82f6;
+}
+
+/* Message status icons */
+.message-status {
+    font-size: 10px;
+    margin-left: 6px;
+}
+
+.status-sent { color: #9ca3af; }
+.status-delivered { color: #3b82f6; }
+.status-seen { color: #10b981; }
+
+/* Reaction badges */
+.reaction-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(55, 65, 81, 0.5);
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reaction-badge:hover {
+    background: rgba(59, 130, 246, 0.5);
+    transform: scale(1.05);
+}
+
+.reaction-badge.active {
+    background: rgba(59, 130, 246, 0.8);
+}
+
+/* File attachments */
+.file-attachment {
+    background: rgba(55, 65, 81, 0.5);
+    border-radius: 8px;
+    padding: 8px;
+    margin-top: 8px;
+}
+
+.file-attachment:hover {
+    background: rgba(55, 65, 81, 0.8);
+}
+
+/* Image preview */
+.image-preview {
+    max-width: 300px;
+    max-height: 200px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.image-preview:hover {
+    transform: scale(1.05);
+}
+
+/* Emoji picker */
+.emoji-mart {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+.emoji-mart-category-label span {
+    background: #1f2937 !important;
+    color: #9ca3af !important;
+}
+
+.emoji-mart-search input {
+    background: #374151 !important;
+    color: white !important;
+    border-color: #4b5563 !important;
+}
+
+/* Sidebar toggle for mobile */
+@media (max-width: 1024px) {
+    #sidebar {
+        position: fixed;
+        left: -320px;
+        z-index: 1000;
+        height: 100vh;
+        transition: left 0.3s ease;
+    }
+    
+    #sidebar.open {
+        left: 0;
+    }
+    
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        display: none;
+    }
+    
+    .overlay.open {
+        display: block;
+    }
+}
+
+/* Loading animation */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.loading {
+    background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+}
+
+/* Toast notifications */
+.toast-notification {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
